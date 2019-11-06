@@ -15,7 +15,7 @@
 #define DIS		0.1		//采样距离
 #define WIDTH	200	//屏幕宽度
 #define HEIGH	200	//屏幕高度
-#define SIZE	0.1	//单个像素的大小
+#define SIZE	0.1		//单个像素的大小
 #define INOUT(distance) (Radius-distance)>EPSILON?-1:(distance-Radius)>EPSILON?1:0	
 //距球心distance的点是否在球内-1-内 1-外 0-球面
 
@@ -34,6 +34,10 @@ static float color_sphere[3] = { 1,1,1 };	//球体的颜色
 static float a_sphere = 0.015;	//球体不透明度
 
 
+//每次前进DIS，xyz的增量
+float delta_x;
+float delta_y;
+float delta_z;
 
 
 //体素结构体
@@ -73,25 +77,42 @@ float Distance_0(float x, float y, float z) {
 //此处取m=1
 void GenerateLine(float*position1, float*position2, float*paraments) {
 
-	float delta_x = position1[0] - position2[0];
-	float delta_y = position1[1] - position2[1];
-	float delta_z = position1[2] - position2[2];
+	float sub_x = position2[0] - position1[0];
+	float sub_y = position2[1] - position1[1];
+	float sub_z = position2[2] - position1[2];
 
 	paraments[0] = 1;
-	paraments[1] = delta_y / delta_x;
-	paraments[2] = delta_z / delta_x;
+	paraments[1] = sub_y / sub_x;
+	paraments[2] = sub_z / sub_x;
+
+	//保存x,y,z增量
+	float SUM_2 = paraments[0] * paraments[0] + paraments[1] * paraments[1] + paraments[2] * paraments[2];
+	float temp = sqrt(SUM_2);
+
+	delta_x = DIS * paraments[0] / temp;
+	delta_y = DIS * paraments[1] / temp;
+	delta_z = DIS * paraments[2] / temp;
 }
 
 //由上一个采样点start，计算出下一个采样点end
 void GeneratePoint(float* start, float* end, float* paraments) {
-
-
-
+	//	(x-x0)/m = (y-y0)/n = (z-z0)/p
+	//	此处取m=1
+	
+	end[0] = start[0] + delta_x;
+	end[1] = start[1] + delta_y;
+	end[2] = start[2] + delta_z;
 }
 
 //end是否超出包围盒范围
 bool Inbox(float* end) {
+	for (int i = 0; i < sizeof(end)/sizeof(float); i++) {
+		if (end[i]<MIN || end[i]>MAX) {
+			return false;
+		}
+	}
 
+	return true;
 }
 
 
@@ -100,24 +121,44 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 	float start[3] = { origin[0],origin[1],origin[2] };
 	float end[3] = {0,0,0};
 
-	float c_in[3] = { color_sphere[0], color_sphere[1] ,color_sphere[2] };
-	float a_in = a_sphere;
+	//经过采样点前
+	float c_in[3] = { 0, 0 ,0 };
+	float a_in = 0;
 
+	//采样点
 	float c_now[3] = {0,0,0};
 	float a_now = 0;
 
-	// 依次计算出采样点
+	//经过采样点后
+	float c_out[3] = { 0,0,0 };
+	float a_out = 0;
+
 	while (true) {
+		// 计算出采样点
 		GeneratePoint(start, end, paraments);
-		if (Inbox(end)) {
-			Calculate(0)
+
+		if (Inbox(end) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1
+			Calculate(0);
+
+			a_out = a_in + a_now*(1-a_in);	//不透明度A
+			c_out[0] = (c_in[0] * a_in + c_now[0] * a_now*(1 - a_in)) / a_out;	//颜色R
+			c_out[1] = (c_in[1] * a_in + c_now[1] * a_now*(1 - a_in)) / a_out;	//颜色G
+			c_out[2] = (c_in[2] * a_in + c_now[2] * a_now*(1 - a_in)) / a_out;	//颜色B
+
+			a_in = a_out;
+			c_in[0] = c_out[0];
+			c_in[1] = c_out[1];
+			c_in[2] = c_out[2];
 		}
 		else {
 			break;
 		}
 	}
 
-
+	RGBA[0] = c_out[0];
+	RGBA[1] = c_out[1];
+	RGBA[2] = c_out[2];
+	RGBA[3] = a_out;
 }
 
 
@@ -193,7 +234,6 @@ void display_voxel() {
 
 			//glVertex3f(x, y, z);
 	
-	fclose(fp);
 	glEnd();
 	glFlush();
 }
