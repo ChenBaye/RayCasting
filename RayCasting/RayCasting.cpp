@@ -12,7 +12,7 @@
 #define NUM		2*LEN+1	//包围盒一条边有多少个点
 #define MIN		(-(LEN * cube_l))	//包围盒最小坐标
 #define MAX		+(LEN * cube_l)		//包围盒最大坐标
-#define DIS		0.1		//采样距离
+#define DIS		0.01		//采样距离
 #define WIDTH	200	//屏幕宽度
 #define HEIGH	200	//屏幕高度
 #define SIZE	0.1		//单个像素的大小
@@ -66,13 +66,45 @@ float Linear_Interpolation(float value_0, float position_0, float value_1, float
 
 }
 
+//单线性插值求颜色,两端点为体素，方向为x方向
+void Linear_Interpolation_C(Voxel v1, Voxel v2, float position, float*c, char option='x') {
+	if (option == 'x') {
+		for (int i = 0; i < 3; i++) {
+			c[i] = Linear_Interpolation(
+				v1.in_out == -1 ? color_sphere[i] : color_void[i],
+				v1.x,
+				v2.in_out == -1 ? color_sphere[i] : color_void[i],
+				v2.x,
+				position
+			);
+		}
+	}
+}
+
+
+//单线性插值求不透明度,两端点为体素，方向为x方向
+void Linear_Interpolation_A(Voxel v1, Voxel v2, float position, float* a, char option = 'x') {
+	if (option == 'x') {
+		
+		*a = Linear_Interpolation(
+			v1.in_out == -1 ? a_sphere : a_void,
+			v1.x,
+			v2.in_out == -1 ? a_sphere : a_void,
+			v2.x,
+			position
+		);
+		
+	}
+}
+
+
 //是否需要插值
-int NeedInterpolation(int(*Index)[3]) {
+int NeedInterpolation(Voxel*Voxel_8) {
 	int in = 0;
 	int out = 0;
 	int temp = 0;
 	for (int i = 0; i < 8; i++) {
-		temp = array[Index[i][0]][Index[i][1]][Index[i][2]].in_out;
+		temp = Voxel_8[i].in_out;
 		if (temp == -1) {
 
 			in = 1;
@@ -126,6 +158,7 @@ void GenerateLine(float*position1, float*position2, float*paraments) {
 	delta_x = DIS * paraments[0] / temp;
 	delta_y = DIS * paraments[1] / temp;
 	delta_z = DIS * paraments[2] / temp;
+	//printf("GenerateLine over\n");
 }
 
 //由上一个采样点start，计算出下一个采样点end
@@ -181,20 +214,20 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 	float z_min = GetMin(end[2]);
 	float z_max = GetMax(end[2]);
 
-	//存储八个体素的索引
-	int Index[8][3] = {
-		{ Position2Index(x_min), Position2Index(y_min), Position2Index(z_min)},
-		{ Position2Index(x_max), Position2Index(y_min), Position2Index(z_min)},
-		{ Position2Index(x_max), Position2Index(y_max), Position2Index(z_min)},
-		{ Position2Index(x_min), Position2Index(y_max), Position2Index(z_min)},
-		{ Position2Index(x_min), Position2Index(y_min), Position2Index(z_max)},
-		{ Position2Index(x_max), Position2Index(y_min), Position2Index(z_max)},
-		{ Position2Index(x_max), Position2Index(y_max), Position2Index(z_max)},
-		{ Position2Index(x_min), Position2Index(y_max), Position2Index(z_max)},
+	//存储end点所交体元的八个体素
+	Voxel Voxel_8[8] = {
+		array[Position2Index(x_min)][Position2Index(y_min)][Position2Index(z_min)],
+		array[Position2Index(x_max)][Position2Index(y_min)][Position2Index(z_min)],
+		array[Position2Index(x_max)][Position2Index(y_max)][Position2Index(z_min)],
+		array[Position2Index(x_min)][Position2Index(y_max)][Position2Index(z_min)],
+		array[Position2Index(x_min)][Position2Index(y_min)][Position2Index(z_max)],
+		array[Position2Index(x_max)][Position2Index(y_min)][Position2Index(z_max)],
+		array[Position2Index(x_max)][Position2Index(y_max)][Position2Index(z_max)],
+		array[Position2Index(x_min)][Position2Index(y_max)][Position2Index(z_max)],
 	};
 	
 	//是否需要插值
-	int result = NeedInterpolation(Index);
+	int result = NeedInterpolation(Voxel_8);
 	switch (result) {
 		case -1:		//全在内部
 			c_now[0] = color_sphere[0];
@@ -216,15 +249,35 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 			float c_p3[3], a_p3;
 			float c_p4[3], a_p4;
 
-			for (int i = 0; i < 3; i++) {
-				c_p1[0] = Linear_Interpolation();
-			}
 
+			Linear_Interpolation_C(Voxel_8[0], Voxel_8[1], end[0], c_p1,'x');
+			Linear_Interpolation_C(Voxel_8[2], Voxel_8[3], end[0], c_p2, 'x');
+			Linear_Interpolation_C(Voxel_8[6], Voxel_8[7], end[0], c_p3, 'x');
+			Linear_Interpolation_C(Voxel_8[4], Voxel_8[5], end[0], c_p4, 'x');
+			
+			
+			Linear_Interpolation_A(Voxel_8[0], Voxel_8[1], end[0], &a_p1, 'x');
+			Linear_Interpolation_A(Voxel_8[2], Voxel_8[3], end[0], &a_p2, 'x');
+			Linear_Interpolation_A(Voxel_8[6], Voxel_8[7], end[0], &a_p3, 'x');
+			Linear_Interpolation_A(Voxel_8[4], Voxel_8[5], end[0], &a_p4, 'x');
+
+			
+			//再进行两次单线性插值
 			float c_p5[3], a_p5;
 			float c_p6[3], a_p6;
-			float c_p7[3], a_p7;
 
+			for (int i = 0; i < 3; i++) {
+				c_p5[i] = Linear_Interpolation(c_p1[i], z_min, c_p4[i], z_max, end[2]);
+				c_p6[i] = Linear_Interpolation(c_p2[i], z_min, c_p3[i], z_max, end[2]);
+			}
+			a_p5 = Linear_Interpolation(a_p1, z_min, a_p4, z_max, end[2]);
+			a_p6 = Linear_Interpolation(a_p2, z_min, a_p3, z_max, end[2]);
 
+			//最后一次单线性插值
+			for (int i = 0; i < 3; i++) {
+				c_now[i] = Linear_Interpolation(c_p5[i], y_min, c_p6[i], y_max, end[1]);
+			}
+			*a_now = Linear_Interpolation(a_p5, y_min, a_p6, y_max, end[1]);
 
 			break;
 	}
@@ -234,6 +287,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 
 //计算像素值
 void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
+	//printf("into GenerateRGBA\n");
 	float start[3] = { origin[0],origin[1],origin[2] };
 	float end[3] = {0,0,0};
 
@@ -254,18 +308,24 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 		GeneratePoint(start, end, paraments);
 
 		if ((Beforebox(end) || Inbox(end)) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1，但可以位于包围盒与image之间
-			
 			Calculate_C_A(end, c_now, &a_now);	//计算c_now，a_now
+			//printf("%f %f %f %f\n", c_now[0], c_now[1], c_now[2], a_now);
 
 			a_out = a_in + a_now*(1-a_in);	//不透明度A
 			c_out[0] = c_in[0]*a_in + c_now[0]*a_now*(1 - a_in);	//颜色R
 			c_out[1] = c_in[1]*a_in + c_now[1]*a_now*(1 - a_in);	//颜色G
 			c_out[2] = c_in[2]*a_in + c_now[2]*a_now*(1 - a_in);	//颜色B
 
+			//printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
+
 			a_in = a_out;
 			c_in[0] = c_out[0];
 			c_in[1] = c_out[1];
 			c_in[2] = c_out[2];
+
+			start[0] = end[0];
+			start[1] = end[1];
+			start[2] = end[2];
 		}
 		else {
 			break;
@@ -276,6 +336,9 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 	RGBA[1] = c_out[1];
 	RGBA[2] = c_out[2];
 	RGBA[3] = a_out;
+	//printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
+
+	//printf("GenerateRGBA over\n");
 }
 
 
@@ -299,6 +362,8 @@ void calculate_voxel() {
 			}
 		}
 	}
+
+	//printf("calculate_voxel over\n");
 }
 
 //从前到后等距采样,计算颜色和不透明度
@@ -317,7 +382,9 @@ void RayCasting() {
 
 	//遍历像素点
 	for (int i = 0; i < HEIGH; i++) {
+		//printf("%d\n",i);
 		for (int j = 0; j < WIDTH; j++) {
+			//printf("%d\n", j);
 			//计算直线参数方程
 			GenerateLine(eye, image_position, paraments);
 
@@ -336,6 +403,8 @@ void RayCasting() {
 			image_position[2] += SIZE;
 		}
 	}
+
+	printf("RayCasting over\n");
 }
 
 
@@ -344,34 +413,33 @@ void RayCasting() {
 //使用opengl展示
 void display_voxel() {
 
-	glClear(GL_COLOR_BUFFER_BIT);//清颜色缓冲区
-	glVertex2f(1, 1);
-	glBegin(GL_POINTS);
-	
 
-			//glVertex3f(x, y, z);
 	
-	glEnd();
+	glClear(GL_COLOR_BUFFER_BIT);
+	glDrawPixels(WIDTH, HEIGH, GL_RGBA, GL_FLOAT, Image);//使用OpenGL的绘图函数
 	glFlush();
+	
 }
 
 
 int main(int argc, char** argv) {
 
 	calculate_voxel();
+	RayCasting();
 
 
 
-
-
+	printf("%f", Image[200]);
 
 	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
+	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
 	glutInitWindowPosition(100, 100);
 	glutInitWindowSize(800, 800);
 	glutCreateWindow("单位球");
 	glutDisplayFunc(display_voxel);
 	glutMainLoop();
+
+
 	int i = 0;
 	scanf("%d", &i);
 	scanf("%d", &i);
