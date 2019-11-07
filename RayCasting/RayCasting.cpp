@@ -21,9 +21,9 @@
 
 static float center[3] = { 0,0,0 };	//球心坐标
 
-static float eye[3] = { -2,0,0 };	//视点坐标
+static float eye[3] = { -3,0,0 };	//视点坐标
 
-static float image[3] = {-1,0,0};	//屏幕中心坐标，与x轴垂直
+static float image[3] = {-2,0,0};	//屏幕中心坐标，与x轴垂直
 
 static float color_void[3] = { 0,0,0 };	//球体外的颜色
 
@@ -316,7 +316,7 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 			c_out[1] = c_in[1]*a_in + c_now[1]*a_now*(1 - a_in);	//颜色G
 			c_out[2] = c_in[2]*a_in + c_now[2]*a_now*(1 - a_in);	//颜色B
 
-			//printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
+			printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
 
 			a_in = a_out;
 			c_in[0] = c_out[0];
