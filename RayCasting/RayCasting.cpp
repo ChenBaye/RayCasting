@@ -17,7 +17,7 @@
 #define HEIGH	200	//屏幕高度
 #define SIZE	0.1		//单个像素的大小
 #define INOUT(distance) (Radius-distance)>EPSILON?-1:(distance-Radius)>EPSILON?1:0	
-//距球心distance的点是否在球内-1-内 1-外 0-球面
+//距球心distance的点是否在球内	-1-内 1-外 0-球面
 
 static float center[3] = { 0,0,0 };	//球心坐标
 
@@ -58,6 +58,40 @@ int Position2Index(float Position) {
 	return (Position - MIN) / cube_l;
 }
 
+
+//单线性插值
+float Linear_Interpolation(float value_0, float position_0, float value_1, float position_1, float position) {
+
+	return value_0 + (value_1 - value_0) * (position - position_0) / (position_1 - position_0);
+
+}
+
+//是否需要插值
+int NeedInterpolation(int(*Index)[3]) {
+	int in = 0;
+	int out = 0;
+	int temp = 0;
+	for (int i = 0; i < 8; i++) {
+		temp = array[Index[i][0]][Index[i][1]][Index[i][2]].in_out;
+		if (temp == -1) {
+
+			in = 1;
+		}
+		else if (temp == 1) {
+			out = 1;
+		}
+	}
+	
+	if (in != 0 && out != 0) {
+		return 0;	//需要插值
+	}
+	else if (in != 0) {
+		return -1;	//全部位于球内部(含球面)
+	}	
+	else {			
+		return 1;	//全部位于球外部(含球面)
+	}
+}
 
 //求两点间距离
 float Distance(float a[3], float b[3])
@@ -148,9 +182,51 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 	float z_max = GetMax(end[2]);
 
 	//存储八个体素的索引
-	int Index[8][3];
-	for (int i = 0; i < 8; i++) {
+	int Index[8][3] = {
+		{ Position2Index(x_min), Position2Index(y_min), Position2Index(z_min)},
+		{ Position2Index(x_max), Position2Index(y_min), Position2Index(z_min)},
+		{ Position2Index(x_max), Position2Index(y_max), Position2Index(z_min)},
+		{ Position2Index(x_min), Position2Index(y_max), Position2Index(z_min)},
+		{ Position2Index(x_min), Position2Index(y_min), Position2Index(z_max)},
+		{ Position2Index(x_max), Position2Index(y_min), Position2Index(z_max)},
+		{ Position2Index(x_max), Position2Index(y_max), Position2Index(z_max)},
+		{ Position2Index(x_min), Position2Index(y_max), Position2Index(z_max)},
+	};
+	
+	//是否需要插值
+	int result = NeedInterpolation(Index);
+	switch (result) {
+		case -1:		//全在内部
+			c_now[0] = color_sphere[0];
+			c_now[1] = color_sphere[1];
+			c_now[2] = color_sphere[2];
+			*a_now = a_sphere;
+			break;
+		case 1:		//全在外部
+			c_now[0] = color_void[0];
+			c_now[1] = color_void[1];
+			c_now[2] = color_void[2];
+			*a_now = a_void;
+			break;
+		case 0:		//有内有外，需要插值
+			//将三线性插值分为七次单线性插值
+			//先取过end点垂直于x轴的平面截取体元得四个点
+			float c_p1[3], a_p1;
+			float c_p2[3], a_p2;
+			float c_p3[3], a_p3;
+			float c_p4[3], a_p4;
 
+			for (int i = 0; i < 3; i++) {
+				c_p1[0] = Linear_Interpolation();
+			}
+
+			float c_p5[3], a_p5;
+			float c_p6[3], a_p6;
+			float c_p7[3], a_p7;
+
+
+
+			break;
 	}
 
 }
@@ -237,7 +313,7 @@ void RayCasting() {
 	float paraments[3] = { 1,0,0 };
 
 	//像素坐标
-	float image_position[3] = { image[0],SIZE*WIDTH/2,SIZE*HEIGH/2};
+	float image_position[3] = { image[0],-SIZE*WIDTH/2,-SIZE*HEIGH/2};
 
 	//遍历像素点
 	for (int i = 0; i < HEIGH; i++) {
