@@ -115,6 +115,46 @@ bool Inbox(float* end) {
 	return true;
 }
 
+//位于包围盒与image之间
+bool Beforebox(float* end) {
+	if (end[0] > image[0] && end[0] < MIN) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+// 返回所在体元中沿某方向体素最小坐标
+float GetMin(float x) {
+	return ((int)(x / cube_l)-1)*cube_l;
+}
+
+// 返回所在体元中沿某方向体素最大坐标
+float GetMax(float x) {
+	return ((int)(x / cube_l))*cube_l;
+}
+
+//计算c_now，a_now
+void Calculate_C_A(float*end, float*c_now, float*a_now) {
+	//先求出8个体素坐标
+	float x_min = GetMin(end[0]);
+	float x_max = GetMax(end[0]);
+
+	float y_min = GetMin(end[1]);
+	float y_max = GetMax(end[1]);
+
+	float z_min = GetMin(end[2]);
+	float z_max = GetMax(end[2]);
+
+	//存储八个体素的索引
+	int Index[8][3];
+	for (int i = 0; i < 8; i++) {
+
+	}
+
+}
+
 
 //计算像素值
 void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
@@ -137,13 +177,14 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 		// 计算出采样点
 		GeneratePoint(start, end, paraments);
 
-		if (Inbox(end) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1
-			Calculate(0);
+		if ((Beforebox(end) || Inbox(end)) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1，但可以位于包围盒与image之间
+			
+			Calculate_C_A(end, c_now, &a_now);	//计算c_now，a_now
 
 			a_out = a_in + a_now*(1-a_in);	//不透明度A
-			c_out[0] = (c_in[0] * a_in + c_now[0] * a_now*(1 - a_in)) / a_out;	//颜色R
-			c_out[1] = (c_in[1] * a_in + c_now[1] * a_now*(1 - a_in)) / a_out;	//颜色G
-			c_out[2] = (c_in[2] * a_in + c_now[2] * a_now*(1 - a_in)) / a_out;	//颜色B
+			c_out[0] = c_in[0]*a_in + c_now[0]*a_now*(1 - a_in);	//颜色R
+			c_out[1] = c_in[1]*a_in + c_now[1]*a_now*(1 - a_in);	//颜色G
+			c_out[2] = c_in[2]*a_in + c_now[2]*a_now*(1 - a_in);	//颜色B
 
 			a_in = a_out;
 			c_in[0] = c_out[0];
