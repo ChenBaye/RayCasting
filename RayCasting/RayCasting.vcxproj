@@ -116,13 +116,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="RayCasting.cpp" />
-    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="C:\Users\98109\Desktop\结果.PNG" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

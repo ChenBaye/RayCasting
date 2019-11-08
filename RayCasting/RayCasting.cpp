@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #define EPSILON 0.000001	//浮点数比较大小的精度
-#define cube_l	0.05   //cube的边长 
+#define cube_l	0.01   //cube的边长 
 #define Radius	1		//单位球
 #define LEN		(int)(Radius/cube_l + 1)		//包围盒半条边有多少个cube
 #define NUM		2*LEN+1	//包围盒一条边有多少个点
