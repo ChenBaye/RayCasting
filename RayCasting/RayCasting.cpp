@@ -13,9 +13,9 @@
 #define MIN		(-(LEN * cube_l))	//包围盒最小坐标
 #define MAX		+(LEN * cube_l)		//包围盒最大坐标
 #define DIS		0.01		//采样距离
-#define WIDTH	200	//屏幕宽度
-#define HEIGH	200	//屏幕高度
-#define SIZE	0.1		//单个像素的大小
+#define WIDTH	400	//屏幕宽度
+#define HEIGH	400	//屏幕高度
+#define SIZE		0.0025		//单个像素的大小
 #define INOUT(distance) (Radius-distance)>EPSILON?-1:(distance-Radius)>EPSILON?1:0	
 //距球心distance的点是否在球内	-1-内 1-外 0-球面
 
@@ -29,7 +29,7 @@ static float color_void[3] = { 0,0,0 };	//球体外的颜色
 
 static float a_void = 0.005;	//球体外不透明度
 
-static float color_sphere[3] = { 1,1,1 };	//球体的颜色
+static float color_sphere[3] = { 1,0,0 };	//球体的颜色
 
 static float a_sphere = 0.015;	//球体不透明度
 
@@ -93,6 +93,10 @@ void Linear_Interpolation_A(Voxel v1, Voxel v2, float position, float* a, char o
 			v2.x,
 			position
 		);
+
+		/*if (*a < 0) {
+			printf("%f %f\n", v1.x, v2.x);
+		}*/
 		
 	}
 }
@@ -118,6 +122,7 @@ int NeedInterpolation(Voxel*Voxel_8) {
 		return 0;	//需要插值
 	}
 	else if (in != 0) {
+		//printf("in\n");
 		return -1;	//全部位于球内部(含球面)
 	}	
 	else {			
@@ -158,6 +163,7 @@ void GenerateLine(float*position1, float*position2, float*paraments) {
 	delta_x = DIS * paraments[0] / temp;
 	delta_y = DIS * paraments[1] / temp;
 	delta_z = DIS * paraments[2] / temp;
+	//printf("%f %f %f\n", paraments[0], paraments[1], paraments[2]);
 	//printf("GenerateLine over\n");
 }
 
@@ -173,22 +179,44 @@ void GeneratePoint(float* start, float* end, float* paraments) {
 
 //end是否超出包围盒范围
 bool Inbox(float* end) {
-	for (int i = 0; i < sizeof(end)/sizeof(float); i++) {
+	for (int i = 0; i < 3; i++) {
 		if (end[i]<MIN || end[i]>MAX) {
 			return false;
 		}
 	}
 
+	
 	return true;
 }
 
 //位于包围盒与image之间
 bool Beforebox(float* end) {
-	if (end[0] > image[0] && end[0] < MIN) {
+	if (end[0] >= image[0] && end[0] < MIN) {
 		return true;
 	}
 	else {
 		return false;
+	}
+}
+
+//产生第一个采样点
+void GenerateStart(float *start) {
+	
+	while (true) {
+		if(Inbox(start)){
+			//printf("inbox\n");
+			break;
+		}
+		else if (Beforebox(start)) {
+			start[0] += delta_x;
+			start[1] += delta_y;
+			start[2] += delta_z;
+			//printf("beforebox\n");
+		}
+		else {	//超出包围盒
+			//printf("outbox\n");
+			break;
+		}
 	}
 }
 
@@ -225,6 +253,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 		array[Position2Index(x_max)][Position2Index(y_max)][Position2Index(z_max)],
 		array[Position2Index(x_min)][Position2Index(y_max)][Position2Index(z_max)],
 	};
+	printf("%d %d %d\n", Position2Index(x_min), Position2Index(y_min), Position2Index(z_min));
 	
 	//是否需要插值
 	int result = NeedInterpolation(Voxel_8);
@@ -250,7 +279,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 			float c_p4[3], a_p4;
 
 
-			Linear_Interpolation_C(Voxel_8[0], Voxel_8[1], end[0], c_p1,'x');
+			Linear_Interpolation_C(Voxel_8[0], Voxel_8[1], end[0], c_p1, 'x');
 			Linear_Interpolation_C(Voxel_8[2], Voxel_8[3], end[0], c_p2, 'x');
 			Linear_Interpolation_C(Voxel_8[6], Voxel_8[7], end[0], c_p3, 'x');
 			Linear_Interpolation_C(Voxel_8[4], Voxel_8[5], end[0], c_p4, 'x');
@@ -261,7 +290,6 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 			Linear_Interpolation_A(Voxel_8[6], Voxel_8[7], end[0], &a_p3, 'x');
 			Linear_Interpolation_A(Voxel_8[4], Voxel_8[5], end[0], &a_p4, 'x');
 
-			
 			//再进行两次单线性插值
 			float c_p5[3], a_p5;
 			float c_p6[3], a_p6;
@@ -279,6 +307,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 			}
 			*a_now = Linear_Interpolation(a_p5, y_min, a_p6, y_max, end[1]);
 
+			//printf("%f\n", *a_now);
 			break;
 	}
 
@@ -288,6 +317,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 //计算像素值
 void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 	//printf("into GenerateRGBA\n");
+	//printf("%f %f %f\n", origin[0], origin[1], origin[2]);
 	float start[3] = { origin[0],origin[1],origin[2] };
 	float end[3] = {0,0,0};
 
@@ -303,12 +333,18 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 	float c_out[3] = { 0,0,0 };
 	float a_out = 0;
 
+	//计算第一个采样点
+	GenerateStart(start);
+	//printf("%f %f %f\n", start[0], start[1], start[2]);
+
 	while (true) {
 		// 计算出采样点
 		GeneratePoint(start, end, paraments);
+		//printf("%f %f %f\n", end[0], end[1], end[2]);
 
-		if ((Beforebox(end) || Inbox(end)) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1，但可以位于包围盒与image之间
+		if (Inbox(end) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1
 			Calculate_C_A(end, c_now, &a_now);	//计算c_now，a_now
+			//printf("%f %f %f\n", end[0], end[1], end[2]);
 			//printf("%f %f %f %f\n", c_now[0], c_now[1], c_now[2], a_now);
 
 			a_out = a_in + a_now*(1-a_in);	//不透明度A
@@ -316,7 +352,7 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 			c_out[1] = c_in[1]*a_in + c_now[1]*a_now*(1 - a_in);	//颜色G
 			c_out[2] = c_in[2]*a_in + c_now[2]*a_now*(1 - a_in);	//颜色B
 
-			printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
+			//printf("%f %f %f %f\n", c_out[0], c_out[1], c_out[2], a_out);
 
 			a_in = a_out;
 			c_in[0] = c_out[0];
@@ -349,11 +385,11 @@ void calculate_voxel() {
 	float y = MIN;
 	float z = MIN;
 	//计算体素
-	for (int i = 0; i < NUM; i++, x += cube_l) {	//循环NUM次
+	for (int i = 0; i < NUM; i++, z += cube_l) {	//循环NUM次
 		y = MIN;
 		for (int j = 0; j < NUM; j++, y += cube_l) {
-			z = MIN;
-			for (int k = 0; k < NUM; k++, z += cube_l) {
+			x = MIN;
+			for (int k = 0; k < NUM; k++, x += cube_l) {
 				array[i][j][k].x = x;	//坐标
 				array[i][j][k].y = y;
 				array[i][j][k].z = z;
@@ -382,11 +418,13 @@ void RayCasting() {
 
 	//遍历像素点
 	for (int i = 0; i < HEIGH; i++) {
-		//printf("%d\n",i);
+		printf("%d\n",i);
+		image_position[1] = -SIZE * WIDTH / 2;
 		for (int j = 0; j < WIDTH; j++) {
 			//printf("%d\n", j);
 			//计算直线参数方程
 			GenerateLine(eye, image_position, paraments);
+			//printf("%f %f %f\n", image_position[0], image_position[1], image_position[2]);
 
 			//计算像素值
 			GenerateRGBA(image_position, RGBA, paraments);
@@ -400,8 +438,8 @@ void RayCasting() {
 
 			//下一像素坐标
 			image_position[1] += SIZE;
-			image_position[2] += SIZE;
 		}
+		image_position[2] += SIZE;
 	}
 
 	printf("RayCasting over\n");
