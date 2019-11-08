@@ -163,7 +163,7 @@ void GenerateLine(float*position1, float*position2, float*paraments) {
 	delta_x = DIS * paraments[0] / temp;
 	delta_y = DIS * paraments[1] / temp;
 	delta_z = DIS * paraments[2] / temp;
-	//printf("%f %f %f\n", paraments[0], paraments[1], paraments[2]);
+	//printf("%f %f %f\n", delta_x, delta_y, delta_z);
 	//printf("GenerateLine over\n");
 }
 
@@ -253,7 +253,7 @@ void Calculate_C_A(float*end, float*c_now, float*a_now) {
 		array[Position2Index(x_max)][Position2Index(y_max)][Position2Index(z_max)],
 		array[Position2Index(x_min)][Position2Index(y_max)][Position2Index(z_max)],
 	};
-	printf("%d %d %d\n", Position2Index(x_min), Position2Index(y_min), Position2Index(z_min));
+	//printf("%d %d %d\n", Position2Index(x_min), Position2Index(y_min), Position2Index(z_min));
 	
 	//是否需要插值
 	int result = NeedInterpolation(Voxel_8);
@@ -333,19 +333,30 @@ void GenerateRGBA(float* origin, float* RGBA, float* paraments) {
 	float c_out[3] = { 0,0,0 };
 	float a_out = 0;
 
+	//test
+	start[0] = -2;
+	start[1] = 0;
+	start[2] = 0;
+	delta_x = DIS;
+	delta_y = 0;
+	delta_z = 0;
+	//test
+
+
 	//计算第一个采样点
 	GenerateStart(start);
 	//printf("%f %f %f\n", start[0], start[1], start[2]);
 
 	while (true) {
 		// 计算出采样点
+
 		GeneratePoint(start, end, paraments);
 		//printf("%f %f %f\n", end[0], end[1], end[2]);
 
 		if (Inbox(end) && a_out<1) {		//不能超出包围盒，且累计不透明度不能超过1
 			Calculate_C_A(end, c_now, &a_now);	//计算c_now，a_now
-			//printf("%f %f %f\n", end[0], end[1], end[2]);
-			//printf("%f %f %f %f\n", c_now[0], c_now[1], c_now[2], a_now);
+			printf("%f %f %f\n", end[0], end[1], end[2]);
+			printf("%f %f %f %f\n", c_now[0], c_now[1], c_now[2], a_now);
 
 			a_out = a_in + a_now*(1-a_in);	//不透明度A
 			c_out[0] = c_in[0]*a_in + c_now[0]*a_now*(1 - a_in);	//颜色R
